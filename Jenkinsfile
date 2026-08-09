@@ -49,6 +49,12 @@ pipeline {
     // are deleted automatically so the Jenkins server doesn't slowly fill
     // its disk.
     buildDiscarder(logRotator(numToKeepStr: '20'))
+
+    // Jenkins' implicit checkout (which normally runs before any stage)
+    // uses whatever shallow-clone settings the job is configured with,
+    // which isn't enough git history for LHCI to find an ancestor commit
+    // to compare against (see the explicit Checkout stage below).
+    skipDefaultCheckout()
   }
 
   environment {
@@ -65,6 +71,24 @@ pipeline {
   }
 
   stages {
+
+    // Checks out `main` with full git history instead of a shallow clone.
+    // LHCI walks git history to find an ancestor commit to diff Lighthouse
+    // scores against; a shallow clone means it can't find one, which is why
+    // builds were logging "Ancestor hash not determinable". `scm` here is
+    // the SCM config the Jenkins job itself was configured with (repo URL,
+    // credentials, branch) — this only overrides the clone depth on top of
+    // that, so nothing else about the checkout changes.
+    stage('Checkout') {
+      steps {
+        checkout([
+          $class: 'GitSCM',
+          branches: scm.branches,
+          userRemoteConfigs: scm.userRemoteConfigs,
+          extensions: scm.extensions + [[$class: 'CloneOption', shallow: false, depth: 0, noTags: false]]
+        ])
+      }
+    }
 
     // Installs exact dependency versions from package-lock.json. Unlike
     // `npm install`, `npm ci` never modifies the lockfile and fails loudly
