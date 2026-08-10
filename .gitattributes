@@ -1,0 +1,6 @@
+# index.html contains an inline JSON-LD <script> block that's pinned by
+# sha256 hash in the CSP <meta> tag. That hash is sensitive to line endings,
+# so this file must always be stored/checked out as LF (Jenkins builds on
+# Linux; without this, a Windows checkout with core.autocrlf=true produces a
+# different hash than what CI builds, silently breaking the CSP).
+index.html text eol=lf
